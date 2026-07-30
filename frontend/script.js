@@ -2,7 +2,7 @@
  * AI Candidate Representative (Mithun KV) - Frontend Client with Debug Logging
  */
 
-const API_BASE_URL = "http://127.0.0.1:5002";
+const API_BASE_URL = "https://ai-portfolio-backend-dfpi.onrender.com";
 
 let isStreaming = false;
 

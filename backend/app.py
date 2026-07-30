@@ -7,6 +7,7 @@ Includes structured terminal logging.
 import os
 import json
 import logging
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify, Response, stream_with_context
@@ -51,6 +52,34 @@ state = {
     "candidate_profile": None,
     "messages": [],
     "job_description": ""
+}
+
+SKILL_ALIASES = {
+    "python": ["python"],
+    "sql": ["sql", "mysql", "postgresql", "database"],
+    "flask": ["flask"],
+    "django": ["django"],
+    "rest api": ["rest api", "rest apis", "api"],
+    "numpy": ["numpy", "num py"],
+    "pandas": ["pandas"],
+    "matplotlib": ["matplotlib"],
+    "seaborn": ["seaborn"],
+    "scikit-learn": ["scikit-learn", "sklearn", "scikit learn"],
+    "tensorflow": ["tensorflow"],
+    "machine learning": ["machine learning", "ml"],
+    "deep learning": ["deep learning", "ann", "cnn", "rnn", "lstm", "gru"],
+    "nlp": ["nlp", "natural language processing"],
+    "generative ai": ["generative ai", "genai", "llm", "large language model"],
+    "transformers": ["transformer", "transformers"],
+    "mlops": ["mlops", "dvc", "data versioning", "model pipeline"],
+    "aws": ["aws", "s3", "aws s3"],
+    "git": ["git"],
+    "github": ["github"],
+    "mongodb": ["mongodb", "mongo db"],
+    "blockchain": ["blockchain", "algorand"],
+    "jwt": ["jwt", "authentication"],
+    "computer networks": ["computer network", "computer networks", "networking"],
+    "operating systems": ["operating system", "operating systems", "os"],
 }
 
 
@@ -107,6 +136,94 @@ def load_default_candidate_profile():
 
 # Pre-load on startup
 load_default_candidate_profile()
+
+
+def normalize_text(value: str) -> str:
+    return re.sub(r"[^a-z0-9+#.\s-]", " ", value.lower())
+
+
+def has_phrase(text: str, phrase: str) -> bool:
+    normalized_phrase = normalize_text(phrase).strip()
+    if not normalized_phrase:
+        return False
+    return re.search(rf"(?<![a-z0-9]){re.escape(normalized_phrase)}(?![a-z0-9])", text) is not None
+
+
+def profile_skill_text(profile: dict) -> str:
+    chunks = [
+        profile.get("summary", ""),
+        " ".join(profile.get("technical_skills", [])),
+        " ".join(profile.get("additional_skills", [])),
+        " ".join(profile.get("experience", [])),
+        " ".join(profile.get("achievements", [])),
+        " ".join(profile.get("certifications", [])),
+    ]
+
+    for project in profile.get("projects", []):
+        chunks.extend([
+            project.get("title", ""),
+            project.get("description", ""),
+            " ".join(project.get("technologies", [])),
+        ])
+
+    return normalize_text(" ".join(chunks))
+
+
+def extract_jd_requirements(jd_text: str) -> list[str]:
+    normalized_jd = normalize_text(jd_text)
+    requirements = []
+
+    for canonical_skill, aliases in SKILL_ALIASES.items():
+        if any(has_phrase(normalized_jd, alias) for alias in aliases):
+            requirements.append(canonical_skill)
+
+    return requirements
+
+
+def candidate_has_requirement(candidate_text: str, requirement: str) -> bool:
+    aliases = SKILL_ALIASES.get(requirement, [requirement])
+    return any(has_phrase(candidate_text, alias) for alias in aliases)
+
+
+def calculate_match_score(profile: dict, jd_text: str) -> dict:
+    jd_requirements = extract_jd_requirements(jd_text)
+    candidate_text = profile_skill_text(profile)
+
+    matched_skills = [
+        requirement for requirement in jd_requirements
+        if candidate_has_requirement(candidate_text, requirement)
+    ]
+    missing_skills = [
+        requirement for requirement in jd_requirements
+        if requirement not in matched_skills
+    ]
+
+    if not jd_requirements:
+        score = 35
+    else:
+        coverage = len(matched_skills) / len(jd_requirements)
+        score = round(coverage * 100)
+
+        if len(jd_text) < 120:
+            score = min(score, 70)
+        elif len(jd_requirements) < 4:
+            score = min(score, 75)
+
+    if score >= 85:
+        recommendation = "Strong Hire"
+    elif score >= 70:
+        recommendation = "Hire"
+    elif score >= 45:
+        recommendation = "Possible Match"
+    else:
+        recommendation = "Do Not Hire"
+
+    return {
+        "match_percentage": max(0, min(100, score)),
+        "matched_skills": matched_skills,
+        "missing_skills": missing_skills,
+        "hiring_recommendation": recommendation,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -197,6 +314,7 @@ def match_resume_jd():
         return jsonify({"error": "No Job Description provided."}), 400
 
     logger.info(f"Evaluating candidate match against JD ({len(jd_text)} characters)...")
+    deterministic_match = calculate_match_score(state["candidate_profile"], jd_text)
 
     prompt = f"""
 Compare the candidate profile against the provided Job Description.
@@ -207,13 +325,17 @@ Candidate Profile:
 Job Description:
 {jd_text}
 
+Use this deterministic scoring result exactly. Do not change these values:
+{json.dumps(deterministic_match, indent=2)}
+
 Provide a structured assessment in valid JSON format with these exact keys:
-1. "match_percentage": (integer between 0 and 100)
-2. "strengths": (list of bullet string points matching JD requirements)
-3. "weaknesses": (list of bullet string points where candidate lacks experience)
-4. "missing_skills": (list of required skills missing from candidate profile)
-5. "hiring_recommendation": (one string: "Strong Hire", "Hire", "Possible Match", or "Do Not Hire")
-6. "summary_reasoning": (concise paragraph summarizing the evaluation)
+1. "match_percentage": {deterministic_match["match_percentage"]}
+2. "matched_skills": {json.dumps(deterministic_match["matched_skills"])}
+3. "strengths": (list of bullet string points matching JD requirements)
+4. "weaknesses": (list of bullet string points where candidate lacks experience)
+5. "missing_skills": {json.dumps(deterministic_match["missing_skills"])}
+6. "hiring_recommendation": "{deterministic_match["hiring_recommendation"]}"
+7. "summary_reasoning": (concise paragraph explaining the deterministic match result)
 
 Return ONLY valid JSON.
 """
@@ -229,6 +351,10 @@ Return ONLY valid JSON.
             ]
         )
         result_json = json.loads(completion.choices[0].message.content)
+        result_json["match_percentage"] = deterministic_match["match_percentage"]
+        result_json["matched_skills"] = deterministic_match["matched_skills"]
+        result_json["missing_skills"] = deterministic_match["missing_skills"]
+        result_json["hiring_recommendation"] = deterministic_match["hiring_recommendation"]
         logger.info(
             f"Match assessment complete. Score: {result_json.get('match_percentage')}% | Recommendation: {result_json.get('hiring_recommendation')}")
         return jsonify(result_json), 200

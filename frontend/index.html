@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mithun KV — AI Candidate Representative</title>
+    <meta http-equiv="Cache-Control" content="no-store">
+    <link rel="stylesheet" href="style.css?v=3">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="app-container">
+
+        <!-- ==================== SIDEBAR ==================== -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="brand">
+                    <i data-lucide="bot" class="brand-icon"></i>
+                    <div class="brand-text">
+                        <h2>AI Rep</h2>
+                        <span class="badge">Mithun KV</span>
+                    </div>
+                </div>
+                <button id="new-chat-btn" class="btn-secondary" title="Start New Chat">
+                    <i data-lucide="square-pen"></i>
+                    <span>New Chat</span>
+                </button>
+            </div>
+
+            <div class="sidebar-scroll">
+
+                <!-- 1. CANDIDATE PROFILE DASHBOARD (AUTO-LOADED FROM BACKEND) -->
+                <section class="sidebar-section">
+                    <h3 class="section-title"><i data-lucide="user-check"></i> Candidate Profile</h3>
+                    <div class="profile-summary" id="candidate-card">
+                        <h4 id="cand-name">Mithun KV</h4>
+                        <p id="cand-location" class="sub-text"><i data-lucide="map-pin"></i> Bengaluru, India</p>
+                        <div class="contact-links">
+                            <a id="cand-github" href="https://github.com/Kvmithun" target="_blank" class="chip-link"><i data-lucide="github"></i> GitHub</a>
+                            <a id="cand-linkedin" href="https://www.linkedin.com/in/mithun-kv-189b42309/" target="_blank" class="chip-link"><i data-lucide="linkedin"></i> LinkedIn</a>
+                        </div>
+                        <div class="skills-wrapper">
+                            <span class="skills-label">Top Skills & Tech:</span>
+                            <div id="cand-skills-chips" class="chips-grid"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. RECRUITER JOB DESCRIPTION & MATCHING SECTION -->
+                <section class="sidebar-section">
+                    <h3 class="section-title"><i data-lucide="briefcase"></i> Recruiter JD Match</h3>
+                    <div class="jd-container">
+                        <textarea id="jd-input" placeholder="Paste your Job Description here to evaluate candidate fit..." rows="5"></textarea>
+                        <button id="match-btn" class="btn-primary-sm">
+                            <i data-lucide="git-compare"></i> Compare Fit
+                        </button>
+                    </div>
+                </section>
+
+                <!-- 3. MATCH RESULTS CARD -->
+                <section class="sidebar-section hidden" id="match-results-card">
+                    <h3 class="section-title"><i data-lucide="award"></i> Match Score</h3>
+                    <div class="score-card">
+                        <div class="score-circle">
+                            <span id="match-percentage">0%</span>
+                        </div>
+                        <div id="match-badge" class="recommendation-badge">Evaluation Pending</div>
+                    </div>
+                    <div class="match-details">
+                        <details open>
+                            <summary>Fit Breakdown</summary>
+                            <div class="match-details-body">
+                                <h5>Key Strengths</h5>
+                                <ul id="match-strengths"></ul>
+                                <h5>Skill Gaps / Missing Requirements</h5>
+                                <ul id="match-missing"></ul>
+                            </div>
+                        </details>
+                    </div>
+                </section>
+
+            </div>
+
+            <div class="sidebar-footer">
+                <span class="status-dot online"></span> API Connected (llama-3.3-70b)
+            </div>
+        </aside>
+
+        <!-- ==================== MAIN CHAT VIEWPORT ==================== -->
+        <main class="chat-viewport">
+
+            <!-- CHAT HEADER -->
+            <header class="chat-header">
+                <button id="toggle-sidebar" class="icon-btn mobile-only">
+                    <i data-lucide="panel-left"></i>
+                </button>
+                <div class="header-info">
+                    <h3>AI Representative — Mithun KV</h3>
+                    <span class="header-subtitle">Strictly grounded in candidate resume & project facts</span>
+                </div>
+            </header>
+
+            <!-- CHAT MESSAGES SCROLL CONTAINER -->
+            <div id="chat-messages" class="messages-container">
+
+                <!-- WELCOME HERO VIEW -->
+                <div id="welcome-view" class="welcome-container">
+                    <div class="welcome-avatar">
+                        <i data-lucide="bot"></i>
+                    </div>
+                    <h2>Ask Me Anything About Mithun</h2>
+                    <p>I am Mithun's AI Representative. Ask me about his experience, GitHub ML pipelines, algorithm implementations, or paste a Job Description on the left to evaluate fit.</p>
+
+                    <div class="suggested-prompts">
+                        <button class="prompt-chip" data-prompt="Summarize Mithun's key technical skills and machine learning background.">
+                            "Summarize Mithun's skills & background"
+                        </button>
+                        <button class="prompt-chip" data-prompt="List all machine learning and MLOps projects Mithun has built on GitHub.">
+                            "List ML & MLOps GitHub projects"
+                        </button>
+                        <button class="prompt-chip" data-prompt="What education and degrees does Mithun hold?">
+                            "Show educational qualifications"
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- CHAT INPUT AREA -->
+            <div class="chat-input-area">
+                <form id="chat-form" class="input-form">
+                    <textarea
+                        id="user-input"
+                        placeholder="Ask a question about Mithun's background, skills, or projects..."
+                        rows="1"
+                        required
+                    ></textarea>
+                    <button type="submit" id="send-btn" disabled>
+                        <i data-lucide="arrow-up"></i>
+                    </button>
+                </form>
+                <p class="disclaimer-text">AI representative strictly limited to explicit candidate ground-truth context.</p>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+    <script src="script.js?v=3"></script>
+</body>
+</html>
